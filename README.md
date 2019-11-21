@@ -8,20 +8,37 @@
 
 ## Getting started
 
-The aim of the project is to build the OpenEdx E-Commerce service Docker image.
-This could be achieved using the `build` make target:
+The aim of the project is to build the OpenEdx E-Commerce service Docker image
+and start playing with it locally. So let's play:
 
 ```bash
-$ make build
+$ make bootstrap
 ```
 
-This will download an archive of the openedx project sources and build the
-`edxec:latest` docker image using downloaded sources.
+This will download an archive of the openedx project sources (current `master`
+branch state by default), build the docker image using downloaded sources,
+compile assets and run database migrations.
 
-Note that you can remove downloaded sources using the `clean` make target:
+After few minutes, the E-Commerce service should be built and configured. Now
+it's time to run it:
 
 ```bash
-$ make clean
+$ make dev
+```
+
+The E-Commerce application should be up and running at:
+[http://localhost:8000](http://localhost:8000), yeah!
+
+To stop running services, use:
+
+```bash
+$ make stop
+```
+
+For more information about available commands, see:
+
+```bash
+$ make help
 ```
 
 ## License

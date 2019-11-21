@@ -1,7 +1,7 @@
 # OpenEdx ECommerce
 
 ARG DOCKER_UID=1000
-ARG DOCKER_GID=1000
+ARG DOCKER_GID=5000
 
 # E-Commerce release archive url to build our image with
 ARG EDX_EC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/master.tar.gz
@@ -55,13 +55,20 @@ FROM base as back-builder
 
 WORKDIR /builder
 
+# Add installation directory to the PYTHONPATH to allow .pth file support
+# (this is required to install some rependencies)
+ENV PYTHONPATH /install/lib/python2.7/site-packages
+
 # Install python dependencies
 COPY --from=downloads /downloads/ecommerce/requirements ./
-RUN mkdir /install && \
-    pip install --prefix=/install -r production.txt
+RUN mkdir -p /install/src && \
+    pip install --prefix=/install --src=/install/src -r production.txt
+
 
 # ---- Core application image ----
 FROM base as core
+
+WORKDIR /app
 
 # Install gettext
 RUN apt-get update && \
@@ -71,12 +78,24 @@ RUN apt-get update && \
 
 # Copy installed python dependencies
 COPY --from=back-builder /install /usr/local
+# Editable packages available via egg-links point to /install/src
+RUN ln -s /usr/local /install
 
 # Copy runtime-required files
 COPY --from=downloads /downloads/ecommerce /app
 
 # Copy front-end build
 COPY --from=front-builder /home/node/ecommerce/static /app/ecommerce/static
+
+# Compile styles
+#
+# Note that the ECOMMERCE_CFG environment variable should be defined and point
+# to an existing YAML formatted file while using production settings. But. The
+# LOGGING setting uses a syslog handler that cannot work as is in a Docker
+# container, so we should override it in our ECOMMERCE_CFG file.
+COPY ./docker/files/usr/local/etc/ecommerce /usr/local/etc/ecommerce
+ENV ECOMMERCE_CFG /usr/local/etc/ecommerce/local.yaml
+RUN python manage.py update_assets --skip-collect --settings=ecommerce.settings.production
 
 # Copy default entrypoint script
 COPY ./docker/files/usr/local/bin/entrypoint /usr/local/bin/entrypoint
@@ -104,7 +123,11 @@ ENTRYPOINT [ "/usr/local/bin/entrypoint" ]
 # ---- Production image ----
 FROM core as production
 
-WORKDIR /app/ecommerce
+WORKDIR /app
+
+# Default settings
+# Note that the ECOMMERCE_CFG environment variable is defined in the core stage
+ENV DJANGO_SETTINGS_MODULE ecommerce.settings.production
 
 # The default command runs gunicorn WSGI server
-CMD gunicorn -c /usr/local/etc/gunicorn/edxec.py wsgi:application
+CMD gunicorn -c /usr/local/etc/gunicorn/edxec.py ecommerce.wsgi:application

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# usage: display usage with the appropriate exit code
+#
+# usage: usage [EXIT_CODE]
+#
+#   EXIT_CODE: program exit code (default: 0)
+function usage(){
+
+    declare -i exit_code="${1:-0}"
+
+    echo "Usage: bin/activate [RELEASE_REF|ARCHIVE_URL]
+
+This script accepts one single required argument that may be an edx/ecommerce
+git reference (tag or branch name from the official repository) or an URL
+pointing to a gzip tarball archive of the ecommerce application sources.
+
+Argument:
+
+  RELEASE_REF  the release reference to build (always targeting the official repository)
+or
+  ARCHIVE_URL  the release sources archive URL (may target any repository)
+
+Examples:
+
+  bin/activate master
+  bin/activate open-release/ironwood.2
+  bin/activate https://github.com/openfun/ecommerce/archive/fun/ecommerce-ol.tar.gz
+
+Output:
+
+  export EDX_EC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/open-release/ironwood.2.tar.gz
+  export EDX_EC_RELEASE_REF=open-release/ironwood.2
+  export EDX_EC_DOCKER_TAG=open-release-ironwood.2
+
+You may want to copy/paste the activate script output to set your shell
+environment or use the following one-liner using Bash process substitution:
+
+  $ source <(bin/activate open-release/ironwood.2)
+"
+
+    # shellcheck disable=SC2086
+    exit ${exit_code}
+}
+
+# ---- Main ----
+if [[ ${#} -ne 1 ]]; then
+  usage 1
+fi
+
+declare archive_url
+declare release_ref
+
+if [[ ${1} == http* ]]; then
+  # Use a two steps parameter subsitution to get the reference from an URL.
+  # Known limitation: we expect the archive to be hosted on github.
+  release_ref=$(tmp=${1#*/github.com/*/ecommerce/archive/} && echo "${tmp%%.tar.gz}")
+  archive_url=${1}
+else
+  release_ref=${1}
+  archive_url="https://github.com/edx/ecommerce/archive/${release_ref}.tar.gz"
+fi
+
+echo "export EDX_EC_ARCHIVE_URL=${archive_url}"
+echo "export EDX_EC_RELEASE_REF=${release_ref}"
+echo "export EDX_EC_DOCKER_TAG=${release_ref/\//-}"

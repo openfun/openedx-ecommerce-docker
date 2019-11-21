@@ -1,0 +1,41 @@
+version: "3.4"
+
+services:
+
+  mysql:
+    image: mysql:5.6
+    env_file:
+      - env.d/development/mysql
+    command: mysqld --character-set-server=utf8 --collation-server=utf8_general_ci
+
+  app:
+    build:
+      context: .
+      target: production
+      args:
+        DOCKER_UID: ${DOCKER_UID:-1000}
+        DOCKER_GID: ${DOCKER_GID:-5000}
+        EDX_EC_ARCHIVE_URL: ${EDX_EC_ARCHIVE_URL:-https://github.com/edx/ecommerce/archive/master.tar.gz}
+    image: edxec:${EDX_EC_DOCKER_TAG:-latest}
+    env_file:
+        - env.d/development/app
+    ports:
+        - "8000:8000"
+    volumes:
+      - ./src:/app
+      - ./data/assets:/app/assets
+      - ./data/media:/app/media
+      - ./docker/files/usr/local/etc/ecommerce:/usr/local/etc/ecommerce
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - "mysql"
+
+  node:
+    image: node:10
+    user: ${DOCKER_UID:-1000}:${DOCKER_GID:-5000}
+    volumes:
+      - ./src:/app
+    working_dir: /app
+
+  dockerize:
+    image: jwilder/dockerize

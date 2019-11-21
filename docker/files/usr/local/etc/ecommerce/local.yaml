@@ -1,0 +1,50 @@
+ALLOWED_HOSTS: '*'
+DATABASES:
+  default:
+    ENGINE: 'django.db.backends.mysql'
+    NAME: 'edxec'
+    USER: 'foo'
+    PASSWORD: 'pass'
+    HOST: 'mysql'
+    PORT: 3306
+    ATOMIC_REQUESTS: true
+ECOMMERCE_URL_ROOT: http://localhost:8000
+LOGGING:
+  version: 1
+  disable_existing_loggers: False
+  handlers:
+    console:
+      level: INFO
+      class: logging.StreamHandler
+      stream: ext://sys.stdout
+  loggers:
+    django:
+      handlers:
+        - console
+      propagate: true
+      level: INFO
+    requests:
+      handlers:
+        - console
+      propagate: true
+      level: WARNING
+    factory:
+      handlers:
+        - console
+      propagate: true
+      level: WARNING
+    elasticsearch:
+      handlers:
+        - console
+      propagate: true
+      level: WARNING
+    urllib3:
+      handlers:
+        - console
+      propagate: true
+      level: WARNING
+    django.request:
+      handlers:
+        - console
+      propagate: true
+      level: WARNING

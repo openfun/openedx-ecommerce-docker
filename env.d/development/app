@@ -1,1 +1,2 @@
 DJANGO_SETTINGS_MODULE=ecommerce.settings.devstack
+ECOMMERCE_CFG=/usr/local/etc/ecommerce/local.yaml

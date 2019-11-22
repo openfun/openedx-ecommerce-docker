@@ -17,7 +17,9 @@ COMPOSE          = \
   docker-compose
 COMPOSE_RUN      = $(COMPOSE) run --rm -e HOME="/tmp"
 COMPOSE_EXEC     = $(COMPOSE) exec
+COMPOSE_EXEC_LMS = $(COMPOSE_EXEC) lms
 MANAGE           = $(COMPOSE_RUN) app python manage.py
+MANAGE_LMS       = $(COMPOSE_RUN) lms python manage.py lms
 
 # Terminal colors
 COLOR_DEFAULT = \033[0;39m
@@ -37,6 +39,10 @@ data/assets/.keep:
 	mkdir -p data/assets
 	touch data/assets/.keep
 
+data/edx/data/.keep:
+	@mkdir -p data/edx/data
+	@touch data/edx/data/.keep
+
 data/media/.keep:
 	mkdir -p data/media
 	touch data/media/.keep
@@ -54,7 +60,8 @@ bootstrap: \
   clean \
   build \
   dev-assets \
-  migrate
+  migrate \
+  lms-sso
 bootstrap:  ## Bootstrap the application
 	@echo -e "$(COLOR_SUCCESS)Project bootstrapped successfully.$(COLOR_RESET)"
 	@echo -e "Now try to run the development server using: $(COLOR_INFO)make dev$(COLOR_RESET)"
@@ -81,7 +88,7 @@ clean:  ## Remove downloaded sources, assets and database
 
 dev: info
 dev:  ## Run development server
-	@echo -e "$(COLOR_INFO)Starging development server...$(COLOR_RESET)"
+	@echo -e "$(COLOR_INFO)Starting development server...$(COLOR_RESET)"
 	$(COMPOSE) up -d app
 	$(COMPOSE_RUN) dockerize -wait tcp://mysql:3306 -timeout 60s
 .PHONY: dev
@@ -105,6 +112,52 @@ info:  ## Get activated release info
 	@echo -e "* EDX_EC_DOCKER_TAG: $(COLOR_INFO)$(EDX_EC_DOCKER_TAG)$(COLOR_RESET)"
 	@echo -e ""
 .PHONY: info
+
+# == edxapp
+lms-logs: ## Display lms logs (follow mode)
+	@$(COMPOSE) logs -f lms
+.PHONY: lms-logs
+
+lms-migrate: tree
+lms-migrate: ## RunLMS database migration
+	@echo -e "$(COLOR_INFO)Running LMS database migrations...$(COLOR_RESET)"
+	$(COMPOSE) up -d mysql
+	$(COMPOSE_RUN) dockerize -wait tcp://mysql:3306 -timeout 60s
+	# We should create this new database by hand since the mysql container
+	# entrypoint is configured to only create one (e-commerce app).
+	$(COMPOSE_EXEC) mysql \
+	  mysql \
+	    --protocol=socket \
+	    -u root \
+	    -h localhost \
+	    --socket=/var/run/mysqld/mysqld.sock \
+	    --database=mysql \
+	    --execute="CREATE DATABASE IF NOT EXISTS \`edxapp\`; GRANT ALL ON \`edxapp\`.* TO 'foo'@'%'"
+	$(MANAGE_LMS) migrate
+.PHONY: lms-migrate
+
+lms-dev: ## Run Open Edx LMS (auth provider)
+	@echo -e "$(COLOR_INFO)Starting LMS development server...$(COLOR_RESET)"
+	$(COMPOSE) up -d lms
+	$(COMPOSE_RUN) dockerize -wait tcp://mysql:3306 -timeout 60s
+.PHONY: lms-dev
+
+lms-sso: \
+  lms-dev \
+  lms-migrate
+lms-sso: ## Generate SSO client application token
+	$(COMPOSE_EXEC_LMS) python /usr/local/bin/create_oauth_client
+	$(MANAGE) create_or_update_site \
+	  --site-id=1 \
+	  --site-domain=localhost:8002 \
+	  --partner-code=edX \
+	  --partner-name='Open edX' \
+	  --lms-url-root=http://localhost:8000 \
+	  --theme-scss-path=sass/themes/edx.scss \
+	  --payment-processors=cybersource,paypal \
+	  --client-id=fakeid \
+	  --client-secret=fakesecret
+.PHONY: lms-sso
 
 logs:  ## Follow application logs
 	@$(COMPOSE) logs -f app
@@ -137,6 +190,7 @@ stop:  ## Stop development server
 
 tree: \
   data/assets/.keep \
+  data/edx/data/.keep \
   data/media/.keep \
   src/.keep
 tree:  ## Build working tree

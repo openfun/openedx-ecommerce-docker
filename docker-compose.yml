@@ -20,7 +20,7 @@ services:
     env_file:
         - env.d/development/app
     ports:
-        - "8000:8000"
+        - "8002:8002"
     volumes:
       - ./src:/app
       - ./data/assets:/app/assets
@@ -39,3 +39,41 @@ services:
 
   dockerize:
     image: jwilder/dockerize
+
+  # Open Edx LMS related services
+  mongodb:
+    image: mongo:3.2
+    # We use WiredTiger in all environments. In development environments we use small files
+    # to conserve disk space, and disable the journal for a minor performance gain.
+    # See https://docs.mongodb.com/v3.0/reference/program/mongod/#options for complete details.
+    command: mongod --smallfiles --nojournal --storageEngine wiredTiger
+
+  memcached:
+    image: memcached:1.4
+
+  redis:
+    image: redis:4.0
+
+  mailcatcher:
+    image: sj26/mailcatcher:latest
+    ports:
+      - "1080:1080"
+
+  lms:
+    image: fundocker/edxapp:hawthorn.1-oee-2.10.1
+    env_file: env.d/development/lms
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/edx/data:/edx/app/edxapp/data
+      - ./docker/files/config/lms/docker_run_development.py:/config/lms/docker_run_development.py
+      - ./docker/files/usr/local/bin/create_oauth_client:/usr/local/bin/create_oauth_client
+    command:
+      python manage.py lms runserver 0.0.0.0:8000 --settings=fun.docker_run_development
+    user: ${DOCKER_UID:-1000}:${DOCKER_GID:-5000}
+    depends_on:
+      - "mailcatcher"
+      - "mysql"
+      - "mongodb"
+      - "memcached"
+      - "redis"

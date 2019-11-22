@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+DOCKER_UID=$(id -u)
+DOCKER_GID=$(id -g)
+EDX_EC_ARCHIVE_URL=${EDX_EC_ARCHIVE_URL:-https://github.com/edx/ecommerce/archive/master.tar.gz}
+EDX_EC_RELEASE_REF=${EDX_EC_RELEASE_REF:-master}
+EDX_EC_DOCKER_TAG=${EDX_EC_DOCKER_TAG:-latest}
+
+
+export DOCKER_UID
+export DOCKER_GID
+export EDX_EC_ARCHIVE_URL
+export EDX_EC_RELEASE_REF
+export EDX_EC_DOCKER_TAG
+
+docker-compose "${@}"

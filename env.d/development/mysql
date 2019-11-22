@@ -1,0 +1,6 @@
+# Mysql db container configuration
+MYSQL_ROOT_PASSWORD=
+MYSQL_ALLOW_EMPTY_PASSWORD=yes
+MYSQL_DATABASE=edxec
+MYSQL_USER=foo
+MYSQL_PASSWORD=pass

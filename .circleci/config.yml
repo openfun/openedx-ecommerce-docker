@@ -84,7 +84,9 @@ jobs:
           docker_layer_caching: true
       - run:
           name: Build production image
-          command: make build
+          command: |
+            export EDX_EC_DOCKER_TAG=${CIRCLE_SHA1}
+            make build
 
       # Login to DockerHub to Publish new images
       #

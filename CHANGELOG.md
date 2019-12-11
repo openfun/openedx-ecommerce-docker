@@ -13,5 +13,6 @@ release.
 
 - First draft of the OpenEdx E-Commerce service docker image (target release
   defaults to the `master` branch)
+- Job on CircleCI to publish images on DockerHub
 
 [unreleased]: https://github.com/openfun/openedx-docker

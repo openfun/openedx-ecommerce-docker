@@ -95,7 +95,8 @@ COPY --from=front-builder /home/node/ecommerce/static /app/ecommerce/static
 # container, so we should override it in our ECOMMERCE_CFG file.
 COPY ./docker/files/usr/local/etc/ecommerce /usr/local/etc/ecommerce
 ENV ECOMMERCE_CFG /usr/local/etc/ecommerce/local.yaml
-RUN python manage.py update_assets --skip-collect --settings=ecommerce.settings.production
+RUN python manage.py update_assets --skip-collect --settings=ecommerce.settings.production || \
+      echo "Assets update failed and will be ignored (old release)"
 
 # Copy default entrypoint script
 COPY ./docker/files/usr/local/bin/entrypoint /usr/local/bin/entrypoint

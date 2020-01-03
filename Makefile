@@ -91,9 +91,9 @@ dev-assets:  ## Handle development assets
 	@echo -e "$(COLOR_INFO)Handling assets for development...$(COLOR_RESET)"
 	$(COMPOSE_RUN) node npm install
 	$(COMPOSE_RUN) node node_modules/.bin/bower install
-	$(MANAGE) update_assets --skip-collect
+	$(MANAGE) update_assets --skip-collect || echo "Assets update failed and will be ignored (old release)"
 	$(COMPOSE_RUN) node node_modules/.bin/r.js -o build.js
-	$(MANAGE) collectstatic --no-input
+	$(MANAGE) collectstatic --noinput
 	$(MANAGE) compress --force
 .PHONY: dev-assets
 

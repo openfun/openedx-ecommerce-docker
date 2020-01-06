@@ -1,0 +1,5 @@
+export EDX_EC_RELEASE=dogwood.3
+export FLAVOR=fun
+export EDX_EC_ARCHIVE_URL=https://github.com/openfun/ecommerce/archive/dogwood.3.tar.gz
+export EDX_EC_RELEASE_REF=dogwood.3-fun
+export EDX_EC_DOCKER_TAG=dogwood.3-fun

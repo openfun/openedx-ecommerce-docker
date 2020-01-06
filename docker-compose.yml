@@ -22,9 +22,9 @@ services:
     ports:
         - "8000:8000"
     volumes:
-      - ./src:/app
-      - ./data/assets:/app/assets
-      - ./data/media:/app/media
+      - ./${FLAVORED_EDX_EC_RELEASE_PATH:-releases/master/bare}/src:/app
+      - ./${FLAVORED_EDX_EC_RELEASE_PATH:-releases/master/bare}/data/assets:/app/assets
+      - ./${FLAVORED_EDX_EC_RELEASE_PATH:-releases/master/bare}/data/media:/app/media
       - ./docker/files/usr/local/etc/ecommerce:/usr/local/etc/ecommerce
     command: python manage.py runserver 0.0.0.0:8000
     depends_on:
@@ -34,7 +34,7 @@ services:
     image: node:10
     user: ${DOCKER_UID:-1000}:${DOCKER_GID:-1000}
     volumes:
-      - ./src:/app
+      - ./${FLAVORED_EDX_EC_RELEASE_PATH:-releases/master/bare}/src:/app
     working_dir: /app
 
   dockerize:

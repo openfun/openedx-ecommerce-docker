@@ -1,68 +1,83 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+declare ENV_FILENAME
+declare PROJECT_DIRECTORY
+declare RELEASES_ROOT
 
-# usage: display usage with the appropriate exit code
-#
-# usage: usage [EXIT_CODE]
-#
-#   EXIT_CODE: program exit code (default: 0)
-function usage(){
+ENV_FILENAME="activate"
+PROJECT_DIRECTORY="$(dirname "${BASH_SOURCE[0]}")/.."
+RELEASES_ROOT="${PROJECT_DIRECTORY}/releases"
 
-    declare -i exit_code="${1:-0}"
 
-    echo "Usage: bin/activate [RELEASE_REF|ARCHIVE_URL]
+function select_release(){
 
-This script accepts one single required argument that may be an edx/ecommerce
-git reference (tag or branch name from the official repository) or an URL
-pointing to a gzip tarball archive of the ecommerce application sources.
+    declare prompt
+    declare release
+    declare -a releases
+    declare -i default=1
+    declare -i choice
+    declare -i n_releases
 
-Argument:
+    # List releases by looking for activate scripts in the "releases" directory and
+    # store them in the releases array
+    read -r -a releases <<< $(
+        find "${PROJECT_DIRECTORY}/releases/" -maxdepth 4 -name activate |
+        sed "s|${PROJECT_DIRECTORY}/releases/\\(.*\\)/activate|\\1|g" |
+        xargs
+    )
+    n_releases=${#releases[@]}
 
-  RELEASE_REF  the release reference to build (always targeting the official repository)
-or
-  ARCHIVE_URL  the release sources archive URL (may target any repository)
+    prompt="Select an available flavored release to activate:\\n"
+    for (( i=0; i<n_releases; i++ )); do
+        prompt+="[$((i+1))] ${releases[$i]}"
+        if [[ $((i+1)) -eq ${default} ]]; then
+            prompt+=" (default)"
+        fi
+        prompt+="\\n"
+    done
+    prompt+="Your choice: "
+    read -r -p "$(echo -e "${prompt}")" choice
 
-Examples:
+    if [[ ${choice} -gt n_releases ]]; then
+        (>&2 echo "Invalid choice ${choice} (should be <= ${n_releases})")
+        exit 10
+    fi
 
-  bin/activate master
-  bin/activate open-release/ironwood.2
-  bin/activate https://github.com/openfun/ecommerce/archive/fun/ecommerce-ol.tar.gz
+    if [[ ${choice} -le 0 ]]; then
+        choice=${default}
+    fi
 
-Output:
-
-  export EDX_EC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/open-release/ironwood.2.tar.gz
-  export EDX_EC_RELEASE_REF=open-release/ironwood.2
-  export EDX_EC_DOCKER_TAG=open-release-ironwood.2
-
-You may want to copy/paste the activate script output to set your shell
-environment or use the following one-liner using Bash process substitution:
-
-  $ source <(bin/activate open-release/ironwood.2)
-"
-
-    # shellcheck disable=SC2086
-    exit ${exit_code}
+    release="${releases[$((choice-1))]}"
+    echo "${release}"
 }
 
-# ---- Main ----
-if [[ ${#} -ne 1 ]]; then
-  usage 1
-fi
 
-declare archive_url
-declare release_ref
+function activate_release(){
 
-if [[ ${1} == http* ]]; then
-  # Use a two steps parameter subsitution to get the reference from an URL.
-  # Known limitation: we expect the archive to be hosted on github.
-  release_ref=$(tmp=${1#*/github.com/*/ecommerce/archive/} && echo "${tmp%%.tar.gz}")
-  archive_url=${1}
-else
-  release_ref=${1}
-  archive_url="https://github.com/edx/ecommerce/archive/${release_ref}.tar.gz"
-fi
+    declare release="$1"
 
-echo "export EDX_EC_ARCHIVE_URL=${archive_url}"
-echo "export EDX_EC_RELEASE_REF=${release_ref}"
-echo "export EDX_EC_DOCKER_TAG=${release_ref/\//-}"
+    release_path="${RELEASES_ROOT}/${release}"
+    env_file_path="${release_path}/${ENV_FILENAME}"
+
+    if [[ ! -d ${release_path} ]]; then
+        (>&2 echo "Release path ${release_path} doesn't exists!")
+        exit 20
+    fi
+
+    if [[ ! -e ${env_file_path} ]]; then
+        (>&2 echo "Environment file (${ENV_FILENAME}) not found for this release!")
+        exit 21
+    fi
+
+    echo -e "\\n# Copy/paste ${release} environment:"
+    cat "${env_file_path}"
+
+    echo -e "\\n# Or run the following command:"
+    echo -e ". ${env_file_path}"
+
+    echo -e "\\n# Check your environment with:"
+    echo -e "make info"
+}
+
+release=$(select_release)
+activate_release "${release}"

@@ -1,7 +1,10 @@
 # OpenEdx E-Commerce
-EDX_EC_ARCHIVE_URL ?= https://github.com/edx/ecommerce/archive/master.tar.gz
-EDX_EC_RELEASE_REF ?= master
-EDX_EC_DOCKER_TAG  ?= latest
+EDX_EC_RELEASE               ?= master
+EDX_EC_ARCHIVE_URL           ?= https://github.com/edx/ecommerce/archive/master.tar.gz
+FLAVOR                       ?= bare
+FLAVORED_EDX_EC_RELEASE_PATH  = releases/$(shell echo ${EDX_EC_RELEASE} | sed -E "s|\.|/|")/$(FLAVOR)
+EDX_EC_RELEASE_REF           ?= master
+EDX_EC_DOCKER_TAG            ?= latest
 
 # Get local user ids
 DOCKER_UID = $(shell id -u)
@@ -11,9 +14,7 @@ DOCKER_GID = $(shell id -g)
 COMPOSE          = \
   DOCKER_UID=$(DOCKER_UID) \
   DOCKER_GID=$(DOCKER_GID) \
-  EDX_EC_ARCHIVE_URL=$(EDX_EC_ARCHIVE_URL) \
-  EDX_EC_RELEASE_REF=$(EDX_EC_RELEASE_REF) \
-  EDX_EC_DOCKER_TAG=$(EDX_EC_DOCKER_TAG) \
+  FLAVORED_EDX_EC_RELEASE_PATH=$(FLAVORED_EDX_EC_RELEASE_PATH) \
   docker-compose
 COMPOSE_RUN      = $(COMPOSE) run --rm -e HOME="/tmp"
 COMPOSE_EXEC     = $(COMPOSE) exec
@@ -33,22 +34,22 @@ SHELL=bash
 
 default: help
 
-data/assets/.keep:
-	mkdir -p data/assets
-	touch data/assets/.keep
+$(FLAVORED_EDX_EC_RELEASE_PATH)/data/assets/.keep:
+	mkdir -p $(FLAVORED_EDX_EC_RELEASE_PATH)/data/assets
+	touch $(FLAVORED_EDX_EC_RELEASE_PATH)/data/assets/.keep
 
-data/media/.keep:
-	mkdir -p data/media
-	touch data/media/.keep
+$(FLAVORED_EDX_EC_RELEASE_PATH)/data/media/.keep:
+	mkdir -p $(FLAVORED_EDX_EC_RELEASE_PATH)/data/media
+	touch $(FLAVORED_EDX_EC_RELEASE_PATH)/data/media/.keep
 
-src/.keep:
-	mkdir -p src
-	touch src/.keep
+$(FLAVORED_EDX_EC_RELEASE_PATH)/src/.keep:
+	mkdir -p $(FLAVORED_EDX_EC_RELEASE_PATH)/src
+	touch $(FLAVORED_EDX_EC_RELEASE_PATH)/src/.keep
 
-src/README.rst:
+$(FLAVORED_EDX_EC_RELEASE_PATH)/src/README.rst:
 	@echo -e "$(COLOR_INFO)Downloading sources archive...$(COLOR_RESET)"
 	curl -sLo /tmp/ecommerce.tgz $(EDX_EC_ARCHIVE_URL)
-	tar xzf /tmp/ecommerce.tgz -C ./src --strip-components=1
+	tar xzf /tmp/ecommerce.tgz -C $(FLAVORED_EDX_EC_RELEASE_PATH)/src --strip-components=1
 
 bootstrap: \
   clean \
@@ -74,9 +75,9 @@ clean:  ## Remove downloaded sources, assets and database
 	${MAKE} stop
 	$(COMPOSE) rm mysql
 	@echo -e "$(COLOR_WARNING)Removing downloaded sources...$(COLOR_RESET)"
-	rm -fr src
+	rm -fr $(FLAVORED_EDX_EC_RELEASE_PATH)/src
 	@echo -e "$(COLOR_WARNING)Removing collected assets...$(COLOR_RESET)"
-	rm -fr data
+	rm -fr $(FLAVORED_EDX_EC_RELEASE_PATH)/data
 .PHONY: clean
 
 dev: info
@@ -84,6 +85,7 @@ dev:  ## Run development server
 	@echo -e "$(COLOR_INFO)Starging development server...$(COLOR_RESET)"
 	$(COMPOSE) up -d app
 	$(COMPOSE_RUN) dockerize -wait tcp://mysql:3306 -timeout 60s
+	$(COMPOSE_RUN) dockerize -wait tcp://app:8000 -timeout 60s
 .PHONY: dev
 
 dev-assets: tree
@@ -100,9 +102,12 @@ dev-assets:  ## Handle development assets
 info:  ## Get activated release info
 	@echo -e "\n.:: OPENEDX-ECOMMERCE-DOCKER ::.\n"
 	@echo -e "== Active configuration ==\n"
-	@echo -e "* EDX_EC_ARCHIVE_URL: $(COLOR_INFO)$(EDX_EC_ARCHIVE_URL)$(COLOR_RESET)"
-	@echo -e "* EDX_EC_RELEASE_REF: $(COLOR_INFO)$(EDX_EC_RELEASE_REF)$(COLOR_RESET)"
-	@echo -e "* EDX_EC_DOCKER_TAG: $(COLOR_INFO)$(EDX_EC_DOCKER_TAG)$(COLOR_RESET)"
+	@echo -e "* EDX_EC_RELEASE                : $(COLOR_INFO)$(EDX_EC_RELEASE)$(COLOR_RESET)"
+	@echo -e "* FLAVOR                        : $(COLOR_INFO)$(FLAVOR)$(COLOR_RESET)"
+	@echo -e "* FLAVORED_EDX_EC_RELEASE_PATH  : $(COLOR_INFO)$(FLAVORED_EDX_EC_RELEASE_PATH)$(COLOR_RESET)"
+	@echo -e "* EDX_EC_ARCHIVE_URL            : $(COLOR_INFO)$(EDX_EC_ARCHIVE_URL)$(COLOR_RESET)"
+	@echo -e "* EDX_EC_RELEASE_REF            : $(COLOR_INFO)$(EDX_EC_RELEASE_REF)$(COLOR_RESET)"
+	@echo -e "* EDX_EC_DOCKER_TAG             : $(COLOR_INFO)$(EDX_EC_DOCKER_TAG)$(COLOR_RESET)"
 	@echo -e ""
 .PHONY: info
 
@@ -112,7 +117,7 @@ logs:  ## Follow application logs
 
 fetch-src: \
   tree\
-  src/README.rst
+  $(FLAVORED_EDX_EC_RELEASE_PATH)/src/README.rst
 fetch-src:  ## Fetch OpenEdx ECommerce sources
 	@echo -e "$(COLOR_INFO)\
 	OpenEdx ECommerce project sources have been downloaded. \
@@ -136,9 +141,9 @@ stop:  ## Stop development server
 .PHONY: stop
 
 tree: \
-  data/assets/.keep \
-  data/media/.keep \
-  src/.keep
+  $(FLAVORED_EDX_EC_RELEASE_PATH)/data/assets/.keep \
+  $(FLAVORED_EDX_EC_RELEASE_PATH)/data/media/.keep \
+  $(FLAVORED_EDX_EC_RELEASE_PATH)/src/.keep
 tree:  ## Build working tree
 .PHONY: tree
 

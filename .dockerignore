@@ -1,5 +1,5 @@
 # Project media and assets
-data
+**/data
 
 # Project sources (not required to build the image)
-src
+**/src

@@ -1,5 +1,5 @@
-export EDX_EC_RELEASE=master
+export EDXEC_RELEASE=master
 export FLAVOR=bare
-export EDX_EC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/master.tar.gz
-export EDX_EC_RELEASE_REF=master
-export EDX_EC_DOCKER_TAG=master
+export EDXEC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/master.tar.gz
+export EDXEC_RELEASE_REF=master
+export EDXEC_DOCKER_TAG=master

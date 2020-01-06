@@ -4,7 +4,7 @@ ARG DOCKER_UID=1000
 ARG DOCKER_GID=1000
 
 # E-Commerce release archive url to build our image with
-ARG EDX_EC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/master.tar.gz
+ARG EDXEC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/master.tar.gz
 
 # ---- Base image to inherit from ----
 FROM python:2.7-stretch as base
@@ -20,8 +20,8 @@ RUN apt-get update && \
     apt-get install -y curl
 
 # Download ecommerce release
-ARG EDX_EC_ARCHIVE_URL
-RUN curl -sLo ecommerce.tgz ${EDX_EC_ARCHIVE_URL} && \
+ARG EDXEC_ARCHIVE_URL
+RUN curl -sLo ecommerce.tgz ${EDXEC_ARCHIVE_URL} && \
     mkdir /downloads/ecommerce && \
     tar xzf ecommerce.tgz -C /downloads/ecommerce --strip-components=1
 

@@ -1,2 +1,3 @@
-data
-src
+# Releases sources, statics and media
+data/
+src/

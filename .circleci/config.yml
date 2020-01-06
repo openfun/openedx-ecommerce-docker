@@ -1,4 +1,56 @@
 version: 2
+
+# Templates
+defaults: &defaults # We use the machine executor, i.e. a VM, not a container
+  machine:
+    # Cache docker layers so that we strongly speed up this job execution
+    # This cache will be available to future jobs (although because jobs run
+    # in parallel, CircleCI does not guarantee that a given job will see a
+    # specific version of the cache. See documentation for details)
+    docker_layer_caching: true
+
+  working_directory: ~/fun
+
+build_steps: &build_steps
+  steps:
+    # Checkout openedx-docker sources
+    - checkout
+
+    # Skip release build & testing if changes are not targeting it
+    - run:
+        name: Check if changes are targeting the current release
+        command: bin/ci checkpoint
+
+    # Install a recent docker-compose release
+    - run:
+        name: Upgrade docker-compose
+        command: |
+          curl -L "https://github.com/docker/compose/releases/download/1.24.1/docker-compose-$(uname -s)-$(uname -m)" -o ~/docker-compose
+          chmod +x ~/docker-compose
+          sudo mv ~/docker-compose /usr/local/bin/docker-compose
+
+    # Production image build. It will be tagged as edxapp:latest
+    - run:
+        name: Build production image
+        command: |
+          source $(bin/ci activate_path)
+          make build
+
+    # Bootstrap
+    - run:
+        name: Bootstrap the app
+        command: |
+          source $(bin/ci activate_path)
+          make dev-assets
+          make migrate
+
+    # Check that the production build starts
+    - run:
+        name: Start development server
+        command: |
+          source $(bin/ci activate_path)
+          make dev
+
 jobs:
   # Git jobs
   # Check that the git history is clean and complies with our expectations
@@ -53,135 +105,108 @@ jobs:
             # Get the longuest line width (ignoring release links)
             test $(cat CHANGELOG.md | grep -Ev "^\[.*\]: https://github.com/openfun" | wc -L) -le 80
 
-  # ---- Docker jobs ----
-  # Build the Docker image ready for production
-  build-docker:
-    docker:
-      - image: circleci/buildpack-deps:stretch
-    working_directory: ~/fun
-    steps:
-      # Checkout repository sources
-      - checkout
-      # Activate docker-in-docker (with layers caching enabled)
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Build production image
-          command: make build
-      - run:
-          name: Check built image availability
-          command: docker images edxec
+  # Build jobs
+  #
+  # Note that the job name should match the EDX_EC_RELEASE value
+  master-bare:
+    <<: [*defaults, *build_steps]
 
-  # ---- DockerHub publication job ----
+  dogwood.3-fun:
+    <<: [*defaults, *build_steps]
+
+  # Hub job
   hub:
-    docker:
-      - image: circleci/buildpack-deps:stretch
-    working_directory: ~/fun
+    <<: *defaults
+
     steps:
       - checkout
-      # Activate docker-in-docker (with layers caching enabled)
-      - setup_remote_docker:
-          docker_layer_caching: true
+
+      # Install a recent docker-compose release
       - run:
-          name: Build production image
+          name: Upgrade docker-compose
           command: |
-            export EDX_EC_DOCKER_TAG=${CIRCLE_SHA1}
+            curl -L "https://github.com/docker/compose/releases/download/1.24.1/docker-compose-$(uname -s)-$(uname -m)" -o ~/docker-compose
+            chmod +x ~/docker-compose
+            sudo mv ~/docker-compose /usr/local/bin/docker-compose
+
+      # Thanks to docker layer caching, rebuilding the image should be blazing
+      # fast!
+      - run:
+          name: Rebuild production image
+          command: |
+            source $(bin/ci activate_path)
             make build
 
-      # Login to DockerHub to Publish new images
-      #
-      # Nota bene: you'll need to define the following secrets environment vars
-      # in CircleCI interface:
-      #
-      #   - DOCKER_USER
-      #   - DOCKER_PASS
+      # Tag images with our DockerHub namespace (fundocker/), and list images to
+      # check that they have been properly tagged.
+      - run:
+          name: Tag production image
+          command: |
+            source $(bin/ci activate_path)
+            docker tag edxec:${EDX_EC_DOCKER_TAG} fundocker/edxec:${CIRCLE_TAG}
+            docker images fundocker/edxec:${CIRCLE_TAG}
+
+      # Login to DockerHub with encrypted credentials stored as secret
+      # environment variables (set in CircleCI project settings)
       - run:
           name: Login to DockerHub
           command: echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
-      # Tag docker image with the same pattern used in Git (Semantic Versioning)
-      #
-      # Git tag: v1.0.1
-      # Docker tag: 1.0.1
+      # Publish the production image to DockerHub
       - run:
-          name: Tag image
+          name: Publish production image
           command: |
-            docker images fundocker/edxec
-            DOCKER_TAG=$([[ -z "$CIRCLE_TAG" ]] && echo $CIRCLE_BRANCH || echo ${CIRCLE_TAG} | sed 's/^v//')
-            RELEASE_TYPE=$([[ -z "$CIRCLE_TAG" ]] && echo "branch" || echo "tag ")
-            # Display either:
-            # - DOCKER_TAG: master (Git branch)
-            # or
-            # - DOCKER_TAG: 1.1.2 (Git tag v1.1.2)
-            echo "DOCKER_TAG: ${DOCKER_TAG} (Git ${RELEASE_TYPE}${CIRCLE_TAG})"
-            docker tag edxec:${CIRCLE_SHA1} fundocker/edxec:${DOCKER_TAG}
-            if [[ -n "$CIRCLE_TAG" ]]; then
-              docker tag edxec:${CIRCLE_SHA1} fundocker/edxec:latest
-            fi
-            docker images | grep -E "^fundocker/edxec\s*(${DOCKER_TAG}.*|latest|master)"
-      # Publish images to DockerHub
-      #
-      # Nota bene: logged user (see "Login to DockerHub" step) must have write
-      # permission for the project's repository; this also implies that the
-      # DockerHub repository already exists.
-      - run:
-          name: Publish images
-          command: |
-            DOCKER_TAG=$([[ -z "$CIRCLE_TAG" ]] && echo $CIRCLE_BRANCH || echo ${CIRCLE_TAG} | sed 's/^v//')
-            RELEASE_TYPE=$([[ -z "$CIRCLE_TAG" ]] && echo "branch" || echo "tag ")
-            # Display either:
-            # - DOCKER_TAG: master (Git branch)
-            # or
-            # - DOCKER_TAG: 1.1.2 (Git tag v1.1.2)
-            echo "DOCKER_TAG: ${DOCKER_TAG} (Git ${RELEASE_TYPE}${CIRCLE_TAG})"
-            docker push fundocker/edxec:${DOCKER_TAG}
-            if [[ -n "$CIRCLE_TAG" ]]; then
-              docker push fundocker/edxec:latest
-            fi
+            docker push fundocker/edxec:${CIRCLE_TAG}
 
 workflows:
   version: 2
 
   ecommerce:
     jobs:
-
-      # Git jobs
-      #
-      # Check validity of git history
+      # Quality
       - lint-git:
           filters:
+            branches:
+              ignore: master
             tags:
-              only: /.*/
-      # Check CHANGELOG update
+              ignore: /.*/
       - check-changelog:
           filters:
             branches:
               ignore: master
             tags:
-              only: /(?!^v).*/
+              ignore: /.*/
       - lint-changelog:
           filters:
             branches:
               ignore: master
             tags:
-              only: /.*/
+              ignore: /.*/
 
-      # Docker jobs
-      #
-      # Build images
-      - build-docker:
+      # Build jobs
+      - master-bare:
           filters:
             tags:
-              only: /.*/
+              ignore: /.*/
+      - dogwood.3-fun:
+          filters:
+            tags:
+              ignore: /.*/
 
-      # DockerHub publication.
+      # We are pushing to Docker only images that are the result of a tag respecting the pattern:
+      #    **{branch-name}-x.y.z**
       #
-      # Publish docker images only if all build
+      # Where branch-name is of the form: **{edx-version}[-{fork-name}]**
+      #   - **edx-version:** name of the upstream `edx-platform` version (e.g. ginkgo.1),
+      #   - **fork-name:** name of the specific project fork, if any (e.g. funwb).
+      #
+      # Some valid examples:
+      #   - dogwood.3-1.0.3
+      #   - dogwood.2-funmooc-17.6.1
+      #   - eucalyptus-funwb-2.3.19
       - hub:
-          requires:
-            - build-docker
           filters:
             branches:
-              only: master
+              ignore: /.*/
             tags:
-              only: /^v.*/
+              only: /^[a-z0-9.]*-?[a-z]*-(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/

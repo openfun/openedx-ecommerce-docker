@@ -95,6 +95,9 @@ COPY --from=front-builder /home/node/ecommerce/static /app/ecommerce/static
 # container, so we should override it in our ECOMMERCE_CFG file.
 COPY ./docker/files/usr/local/etc/ecommerce /usr/local/etc/ecommerce
 ENV ECOMMERCE_CFG /usr/local/etc/ecommerce/local.yaml
+# The update_assets management command is not implemented in old releases, we
+# ignore its call failure for backward-compatibility as assets have already
+# been build in a previous stage in this case.
 RUN python manage.py update_assets --skip-collect --settings=ecommerce.settings.production || \
       echo "Assets update failed and will be ignored (old release)"
 

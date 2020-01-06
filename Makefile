@@ -103,7 +103,7 @@ info:  ## Get activated release info
 	@echo -e "\n.:: OPENEDX-ECOMMERCE-DOCKER ::.\n"
 	@echo -e "== Active configuration ==\n"
 	@echo -e "* EDXEC_RELEASE                : $(COLOR_INFO)$(EDXEC_RELEASE)$(COLOR_RESET)"
-	@echo -e "* FLAVOR                        : $(COLOR_INFO)$(FLAVOR)$(COLOR_RESET)"
+	@echo -e "* FLAVOR                       : $(COLOR_INFO)$(FLAVOR)$(COLOR_RESET)"
 	@echo -e "* FLAVORED_EDXEC_RELEASE_PATH  : $(COLOR_INFO)$(FLAVORED_EDXEC_RELEASE_PATH)$(COLOR_RESET)"
 	@echo -e "* EDXEC_ARCHIVE_URL            : $(COLOR_INFO)$(EDXEC_ARCHIVE_URL)$(COLOR_RESET)"
 	@echo -e "* EDXEC_RELEASE_REF            : $(COLOR_INFO)$(EDXEC_RELEASE_REF)$(COLOR_RESET)"

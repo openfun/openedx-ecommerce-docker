@@ -107,7 +107,7 @@ jobs:
 
   # Build jobs
   #
-  # Note that the job name should match the EDX_EC_RELEASE value
+  # Note that the job name should match the EDXEC_RELEASE value
   master-bare:
     <<: [*defaults, *build_steps]
 
@@ -143,7 +143,7 @@ jobs:
           name: Tag production image
           command: |
             source $(bin/ci activate_path)
-            docker tag edxec:${EDX_EC_DOCKER_TAG} fundocker/edxec:${CIRCLE_TAG}
+            docker tag edxec:${EDXEC_DOCKER_TAG} fundocker/edxec:${CIRCLE_TAG}
             docker images fundocker/edxec:${CIRCLE_TAG}
 
       # Login to DockerHub with encrypted credentials stored as secret

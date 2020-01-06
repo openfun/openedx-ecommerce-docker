@@ -23,11 +23,11 @@ Select an available flavored release to activate:
 Your choice: 1
 
 # Copy/paste dogwood/3/fun environment:
-export EDX_EC_RELEASE=dogwood.3
+export EDXEC_RELEASE=dogwood.3
 export FLAVOR=fun
-export EDX_EC_ARCHIVE_URL=https://github.com/openfun/ecommerce/archive/dogwood.3.tar.gz
-export EDX_EC_RELEASE_REF=dogwood.3-fun
-export EDX_EC_DOCKER_TAG=dogwood.3-fun
+export EDXEC_ARCHIVE_URL=https://github.com/openfun/ecommerce/archive/dogwood.3.tar.gz
+export EDXEC_RELEASE_REF=dogwood.3-fun
+export EDXEC_DOCKER_TAG=dogwood.3-fun
 
 # Or run the following command:
 . bin/../releases/dogwood/3/fun/activate

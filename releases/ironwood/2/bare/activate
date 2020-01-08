@@ -1,0 +1,5 @@
+export EDXEC_RELEASE=ironwood.2
+export FLAVOR=bare
+export EDXEC_ARCHIVE_URL=https://github.com/edx/ecommerce/archive/open-release/ironwood.2.tar.gz
+export EDXEC_RELEASE_REF=ironwood.2
+export EDXEC_DOCKER_TAG=ironwood.2

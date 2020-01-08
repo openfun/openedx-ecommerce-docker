@@ -114,6 +114,9 @@ jobs:
   dogwood.3-fun:
     <<: [*defaults, *build_steps]
 
+  ironwood.2-bare:
+    <<: [*defaults, *build_steps]
+
   # Hub job
   hub:
     <<: *defaults
@@ -189,6 +192,10 @@ workflows:
             tags:
               ignore: /.*/
       - dogwood.3-fun:
+          filters:
+            tags:
+              ignore: /.*/
+      - ironwood.2-bare:
           filters:
             tags:
               ignore: /.*/
